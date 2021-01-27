@@ -8,10 +8,11 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 
-class Article(db.Model):
+class Hotel(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     Star = db.Column(db.Integer, nullable=True)
     title = db.Column(db.String(100), nullable=False)
+    tours = db.relationship('Tour', backref = 'name_hostel', lazy = 'dynamic')
 
     def __repr__(self):
         return "<{}:{}>".format(self.id, self.title)
@@ -19,7 +20,7 @@ class Article(db.Model):
 
 class Price(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    id_tour = db.Column(db.Integer, nullable=False)
+    id_tour = db.Column(db.Integer, db.ForeignKey('tour.id'), nullable=False)
     title_hostel = db.Column(db.String(100), nullable=False)
     price_tour = db.Column(db.Integer, nullable=False)
     date_tour = db.Column(db.Integer, nullable=False)
@@ -41,23 +42,25 @@ class Settlement(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title_settlement = db.Column(db.String(100), nullable=False)
     settlement_code = db.Column(db.Integer, nullable=False)
+    tours = db.relationship('Tour', backref = 'name_settlement', lazy = 'dynamic')
 
     def __repr__(self):
-        return '<Country %r>' % self.id
+        return '<Settlement %r>' % self.id
 
 
 class Tour(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     type_tour = db.Column(db.String(100), nullable=False)
     duration  = db.Column(db.Integer, nullable=False)
-    title_settlement = db.Column(db.String(100), nullable=False)
+    title_settlement = db.Column(db.String(100), db.ForeignKey('settlement.title_settlement'), nullable=False)
     hotel_availability = db.Column(db.String(20), nullable=False)
-    title_hostel = db.Column(db.String(100), nullable=True)
+    title_hostel = db.Column(db.String(100), db.ForeignKey('hotel.title'), nullable=True)
     mode_vehicle = db.Column(db.String(100), nullable=False)
     point_shipping = db.Column(db.String(100), nullable=False)
+    price_lists = db.relationship('Price', backref = 'aidi', lazy = 'dynamic')
 
     def __repr__(self):
-        return '<Country %r>' % self.id
+        return '<Tour %r>' % self.id
 
 
 @app.route('/the_tour')
@@ -310,22 +313,22 @@ def price_list_create():
 
 @app.route('/posts')
 def posts():
-    articles = Article.query.order_by(Article.id.desc()).all()
-    return render_template("posts.html", articles=articles)
+    hotels = Hotel.query.order_by(Hotel.id.desc()).all()
+    return render_template("posts.html", hotels=hotels)
 
 
 @app.route('/posts/<int:id>')
 def post_detail(id):
-    article = Article.query.get(id)
-    return render_template("post_detail.html", article=article)
+    hotel = Hotel.query.get(id)
+    return render_template("post_detail.html", hotel=hotel)
 
 
 @app.route('/posts/<int:id>/del')
 def post_delete(id):
-    article = Article.query.get_or_404(id)
+    hotel = Hotel.query.get_or_404(id)
 
     try:
-        db.session.delete(article)
+        db.session.delete(hotel)
         db.session.commit()
         return redirect('/posts')
     except:
@@ -339,10 +342,10 @@ def index():
 
 @app.route('/posts/<int:id>/update', methods=['POST', 'GET'])
 def hotels_update(id):
-    article = Article.query.get(id)
+    hotel = Hotel.query.get(id)
     if request.method == "POST":
-        article.Star = request.form['Star']
-        article.title = request.form['title']
+        hotel.Star = request.form['Star']
+        hotel.title = request.form['title']
 
         try:
             db.session.commit()
@@ -350,7 +353,7 @@ def hotels_update(id):
         except:
             return "При радактировании Гостиницы произошла ошибка"
     else:
-        return render_template("hotels_update.html", article=article)
+        return render_template("hotels_update.html", hotel=hotel)
 
 
 @app.route('/создание_Гостиниц', methods=['GET', 'POST'])
@@ -359,10 +362,10 @@ def hotels():
         Star = request.form['Star']
         title = request.form['title']
 
-        article = Article(Star=Star, title=title)
+        hotel = Hotel(Star=Star, title=title)
 
         try:
-            db.session.add(article)
+            db.session.add(hotel)
             db.session.commit()
             return redirect('/posts')
         except:
